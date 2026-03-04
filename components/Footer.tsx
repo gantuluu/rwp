@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { MapPin, Mail, Phone, ShieldCheck, FileText, HelpCircle, Truck, RefreshCw, Facebook, Instagram, Twitter, Youtube, ShoppingCart } from 'lucide-react';
 
 const Footer = () => {
@@ -12,8 +13,14 @@ const Footer = () => {
           {/* Store Info */}
           <div className="flex flex-col gap-6">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 rounded-xl premium-gradient flex items-center justify-center shadow-lg shadow-primary/20">
-                <ShoppingCart className="text-white" size={20} />
+              <div className="relative w-12 h-12">
+                <Image 
+                  src="https://uploads.onecompiler.io/43ruvewfy/44fbppx27/generated-image%20(2).png" 
+                  alt="RWP Store Logo" 
+                  fill 
+                  className="object-contain"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <span className="text-2xl font-black tracking-tighter text-white uppercase">
                 RWP<span className="text-primary">STORE</span>

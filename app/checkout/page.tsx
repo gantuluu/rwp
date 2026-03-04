@@ -41,7 +41,7 @@ const CheckoutPage = () => {
 
     try {
       const orderId = `ORDER-${Date.now()}`;
-      const response = await fetch('/api/checkout/xendit', {
+      const response = await fetch('/api/pay/init', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,11 +66,13 @@ const CheckoutPage = () => {
         throw new Error('Server returned an unexpected response format. Please check server logs.');
       }
 
-      if (data.invoiceUrl) {
+      if (data.success && data.invoiceUrl) {
         setPaymentUrl(data.invoiceUrl);
         window.location.assign(data.invoiceUrl);
       } else {
-        alert(data.error || 'Failed to initialize payment');
+        const errorMsg = data.error || 'Failed to initialize payment';
+        console.error('Payment Error Details:', data);
+        alert(errorMsg);
         setLoading(false);
       }
     } catch (error: any) {

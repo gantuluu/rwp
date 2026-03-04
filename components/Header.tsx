@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Search, ShoppingCart, User, Bell, HelpCircle, Menu, X } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { motion, AnimatePresence } from 'motion/react';
@@ -48,8 +49,14 @@ const Header = () => {
         <div className="flex items-center gap-4 md:gap-8">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl premium-gradient flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
-              <ShoppingCart className="text-white" size={20} />
+            <div className="relative w-10 h-10 md:w-12 md:h-12 group-hover:scale-110 transition-transform">
+              <Image 
+                src="https://uploads.onecompiler.io/43ruvewfy/44fbppx27/generated-image%20(2).png" 
+                alt="RWP Store Logo" 
+                fill 
+                className="object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <span className="text-lg md:text-2xl font-black tracking-tighter text-white uppercase">
               RWP<span className="text-primary">STORE</span>

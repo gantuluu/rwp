@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'uploads.onecompiler.io',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   output: 'standalone',
