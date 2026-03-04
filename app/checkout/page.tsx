@@ -2,101 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, CreditCard, MapPin, User, Mail, Phone, Loader2, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, CreditCard, MapPin, User, Mail, Phone, Loader2, CheckCircle2, ShieldCheck, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import Link from 'next/link';
 import Image from 'next/image';
-import Script from 'next/script';
 import { useRouter } from 'next/navigation';
-
-declare global {
-  interface Window {
-    checkout: {
-      process: (reference: string, options: any) => void;
-    };
-  }
-}
-
-const paymentGroups = [
-  {
-    group: "Virtual Account",
-    type: "virtual_account",
-    methods: [
-      { code: "B1", name: "BCA Virtual Account", bank: "BCA" },
-      { code: "M2", name: "Mandiri Virtual Account", bank: "Mandiri" },
-      { code: "BR", name: "BRI Virtual Account", bank: "BRI" },
-      { code: "I1", name: "BNI Virtual Account", bank: "BNI" },
-      { code: "BT", name: "Permata Virtual Account", bank: "Permata" },
-      { code: "NC", name: "CIMB Niaga Virtual Account", bank: "CIMB Niaga" },
-      { code: "BV", name: "Danamon Virtual Account", bank: "Danamon" },
-      { code: "A1", name: "ATM Bersama", bank: "ATM Bersama" },
-      { code: "FT", name: "Other Bank Transfer", bank: "Other Bank" }
-    ]
-  },
-  {
-    group: "E-Wallet",
-    type: "ewallet",
-    methods: [
-      { code: "OV", name: "OVO" },
-      { code: "SP", name: "ShopeePay" },
-      { code: "SL", name: "ShopeePay Link" },
-      { code: "DA", name: "DANA" },
-      { code: "LA", name: "LinkAja" }
-    ]
-  },
-  {
-    group: "QRIS",
-    type: "qris",
-    methods: [
-      { code: "QR", name: "QRIS (All Payment Apps)" }
-    ]
-  },
-  {
-    group: "Credit / Debit Card",
-    type: "credit_card",
-    methods: [
-      { code: "VC", name: "Visa / Mastercard" },
-      { code: "CC", name: "Credit Card (3D Secure)" },
-      { code: "JCB", name: "JCB" },
-      { code: "AMEX", name: "American Express" }
-    ]
-  },
-  {
-    group: "Retail Outlet",
-    type: "retail",
-    methods: [
-      { code: "IR", name: "Indomaret" },
-      { code: "AM", name: "Alfamart" }
-    ]
-  },
-  {
-    group: "Paylater / Installment",
-    type: "paylater",
-    methods: [
-      { code: "PL", name: "Kredivo" },
-      { code: "KK", name: "Kredivo Installment" },
-      { code: "DN", name: "Akulaku" },
-      { code: "AL", name: "Akulaku Installment" }
-    ]
-  },
-  {
-    group: "Direct Debit",
-    type: "direct_debit",
-    methods: [
-      { code: "DB", name: "BRI Direct Debit" },
-      { code: "DM", name: "Mandiri Direct Debit" },
-      { code: "DY", name: "BCA OneKlik" }
-    ]
-  }
-];
 
 const CheckoutPage = () => {
   const router = useRouter();
   const { items, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [selectedMethod, setSelectedMethod] = useState('VC');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -124,9 +40,8 @@ const CheckoutPage = () => {
     setLoading(true);
 
     try {
-      // eslint-disable-next-line react-hooks/purity
       const orderId = `ORDER-${Date.now()}`;
-      const response = await fetch('/api/checkout/duitku', {
+      const response = await fetch('/api/checkout/xendit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,268 +49,242 @@ const CheckoutPage = () => {
         body: JSON.stringify({
           amount: subtotal,
           orderId,
-          productDetails: `Payment for ${items.length} items at MobiShop`,
           email: formData.email,
           customerName: formData.name,
           items: items,
-          paymentMethod: selectedMethod,
         }),
       });
 
-      const data = await response.json();
-      console.log('Duitku API Response:', data);
+      const contentType = response.headers.get('content-type');
+      let data;
 
-      if (data.reference && typeof window.checkout !== 'undefined') {
-        // Use Duitku Pop if script is loaded
-        window.checkout.process(data.reference, {
-          onSuccess: function (result: any) {
-            console.log('Payment Success:', result);
-            clearCart();
-            router.push('/checkout/success');
-          },
-          onPending: function (result: any) {
-            console.log('Payment Pending:', result);
-            clearCart();
-            router.push('/checkout/success?status=pending');
-          },
-          onError: function (result: any) {
-            console.error('Payment Error:', result);
-            alert('Payment failed. Please try again.');
-            setLoading(false);
-          },
-          onCanceled: function (result: any) {
-            console.log('Payment Canceled:', result);
-            setLoading(false);
-          },
-        });
-      } else if (data.paymentUrl) {
-        // Fallback to Redirect if Pop script is not available
-        setPaymentUrl(data.paymentUrl);
-        window.location.assign(data.paymentUrl);
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Server returned non-JSON response:', text);
+        throw new Error('Server returned an unexpected response format. Please check server logs.');
+      }
+
+      if (data.invoiceUrl) {
+        setPaymentUrl(data.invoiceUrl);
+        window.location.assign(data.invoiceUrl);
       } else {
         alert(data.error || 'Failed to initialize payment');
         setLoading(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Payment Error:', error);
-      alert('An error occurred. Please try again.');
+      alert(error.message || 'An error occurred. Please try again.');
       setLoading(false);
     }
   };
 
   if (items.length === 0) return null;
 
-  const duitkuScriptUrl = process.env.NEXT_PUBLIC_DUITKU_ENV === 'production' 
-    ? 'https://passport.duitku.com/checkout/js/duitku.js' 
-    : 'https://sandbox.duitku.com/2021/js/duitku.js';
-
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-32">
-      <Script 
-        src={duitkuScriptUrl}
-        strategy="afterInteractive"
-        onLoad={() => setScriptLoaded(true)}
-      />
-
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4 flex items-center gap-4">
-        <Link href="/" className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
-          <ChevronLeft size={20} />
-        </Link>
-        <h1 className="text-lg font-bold text-black">Checkout</h1>
+      <header className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-6">
+        <div className="container mx-auto flex items-center gap-6">
+          <button onClick={() => router.back()} className="p-3 rounded-2xl bg-secondary text-white hover:bg-white/10 transition-all border border-white/5">
+            <ChevronLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-xl font-black text-white tracking-tight uppercase">CHECKOUT</h1>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">COMPLETE YOUR PREMIUM ORDER</p>
+          </div>
+        </div>
       </header>
 
-      <main className="px-6 py-8">
-        <form onSubmit={handlePayment} className="flex flex-col gap-8">
-          {/* Order Summary */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400">Order Summary</h2>
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col gap-4">
-              {items.map((item) => (
-                <div key={item.variantId} className="flex gap-4">
-                  <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      className="object-cover"
-                      referrerPolicy="no-referrer"
+      <main className="container mx-auto px-4 md:px-6 py-12">
+        <form onSubmit={handlePayment} className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          {/* Left: Shipping Details */}
+          <div className="lg:col-span-7 flex flex-col gap-10">
+            <section className="flex flex-col gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                  <MapPin size={20} />
+                </div>
+                <h2 className="text-lg font-black text-white uppercase tracking-tight">Shipping Information</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 rounded-[2rem] bg-secondary/30 border border-white/5">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                    <input
+                      required
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      placeholder="Enter your name"
+                      className="w-full pl-12 pr-4 py-4 bg-secondary/50 border border-white/5 rounded-2xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
                     />
                   </div>
-                  <div className="flex-1 flex flex-col justify-center gap-0.5">
-                    <h3 className="text-xs font-bold text-black line-clamp-1">{item.title}</h3>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest">
-                      {item.color} • {item.size} • x{item.quantity}
-                    </p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                    <input
+                      required
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="your@email.com"
+                      className="w-full pl-12 pr-4 py-4 bg-secondary/50 border border-white/5 rounded-2xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                    />
                   </div>
-                  <div className="flex items-center">
-                    <span className="text-xs font-bold text-black">
-                      Rp{(item.price * item.quantity).toLocaleString()}
-                    </span>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                    <input
+                      required
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="+62 812..."
+                      className="w-full pl-12 pr-4 py-4 bg-secondary/50 border border-white/5 rounded-2xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                    />
                   </div>
                 </div>
-              ))}
-              <div className="h-px bg-gray-100 my-2" />
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-bold text-black">Total Amount</span>
-                <span className="text-lg font-bold text-black">Rp{subtotal.toLocaleString()}</span>
-              </div>
-            </div>
-          </section>
 
-          {/* Shipping Details */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400">Shipping Details</h2>
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                  <input
-                    required
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Enter your full name"
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-black transition-all"
-                  />
+                <div className="flex flex-col gap-2 md:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Shipping Address</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-4 text-gray-600" size={18} />
+                    <textarea
+                      required
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      placeholder="Enter your full shipping address"
+                      rows={4}
+                      className="w-full pl-12 pr-4 py-4 bg-secondary/50 border border-white/5 rounded-2xl text-sm text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none resize-none"
+                    />
+                  </div>
                 </div>
               </div>
+            </section>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                  <input
-                    required
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="your@email.com"
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-black transition-all"
-                  />
+            <section className="flex flex-col gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                  <CreditCard size={20} />
+                </div>
+                <h2 className="text-lg font-black text-white uppercase tracking-tight">Payment Method</h2>
+              </div>
+              <div className="p-8 rounded-[2rem] bg-secondary/30 border border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+                    <Image src="https://picsum.photos/seed/xendit/100/100" alt="Xendit" width={32} height={32} className="grayscale brightness-200" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">Xendit Secure Gateway</h4>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Virtual Account, E-Wallet, QRIS</p>
+                  </div>
+                </div>
+                <div className="w-6 h-6 rounded-full border-2 border-primary flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
                 </div>
               </div>
+            </section>
+          </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Phone Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                  <input
-                    required
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="0812xxxx"
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-black transition-all"
-                  />
+          {/* Right: Order Summary */}
+          <div className="lg:col-span-5">
+            <div className="sticky top-32 flex flex-col gap-8">
+              <section className="flex flex-col gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                    <ShoppingBag size={20} />
+                  </div>
+                  <h2 className="text-lg font-black text-white uppercase tracking-tight">Order Summary</h2>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Shipping Address</label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-4 text-gray-300" size={18} />
-                  <textarea
-                    required
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="Enter your full address"
-                    rows={3}
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-black transition-all resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Payment Method */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400">Payment Method</h2>
-            <div className="flex flex-col gap-6">
-              {paymentGroups.map((group) => (
-                <div key={group.type} className="flex flex-col gap-3">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">{group.group}</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {group.methods.map((method) => (
-                      <button
-                        key={method.code}
-                        type="button"
-                        onClick={() => setSelectedMethod(method.code)}
-                        className={`flex flex-col items-start gap-3 p-4 rounded-2xl border transition-all relative overflow-hidden ${
-                          selectedMethod === method.code
-                            ? 'bg-black border-black text-white shadow-lg shadow-black/10'
-                            : 'bg-white border-gray-100 text-black hover:border-gray-300'
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] ${
-                          selectedMethod === method.code ? 'bg-white/20' : 'bg-gray-50'
-                        }`}>
-                          {'bank' in method ? method.bank : method.code}
+                
+                <div className="p-8 rounded-[2rem] bg-secondary/30 border border-white/5 flex flex-col gap-6">
+                  <div className="flex flex-col gap-6 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
+                    {items.map((item) => (
+                      <div key={item.variantId} className="flex gap-4">
+                        <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-secondary border border-white/5 flex-shrink-0">
+                          <Image
+                            src={item.image}
+                            alt={item.title}
+                            fill
+                            className="object-cover"
+                            referrerPolicy="no-referrer"
+                          />
                         </div>
-                        <span className="text-[10px] font-bold leading-tight text-left">{method.name}</span>
-                        {selectedMethod === method.code && (
-                          <div className="absolute top-2 right-2">
-                            <CheckCircle2 size={14} className="text-white" />
-                          </div>
-                        )}
-                      </button>
+                        <div className="flex-1 flex flex-col justify-center gap-1">
+                          <h3 className="text-xs font-bold text-white line-clamp-1">{item.title}</h3>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                            {item.color} • {item.size} • x{item.quantity}
+                          </p>
+                          <span className="text-xs font-black text-primary">
+                            Rp{(item.price * item.quantity).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
                     ))}
                   </div>
+
+                  <div className="h-px bg-white/5" />
+
+                  <div className="flex flex-col gap-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Subtotal</span>
+                      <span className="text-sm font-bold text-white">Rp{subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Shipping</span>
+                      <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">FREE</span>
+                    </div>
+                    <div className="h-px bg-white/5 my-2" />
+                    <div className="flex justify-between items-end">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Total Amount</span>
+                        <span className="text-3xl font-black text-white tracking-tighter">Rp{subtotal.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-4 py-5 rounded-[1.5rem] premium-gradient text-white text-sm font-black uppercase tracking-[0.2em] hover:shadow-2xl hover:shadow-primary/40 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 size={20} className="animate-spin" />
+                        PROCESSING...
+                      </>
+                    ) : (
+                      <>
+                        PAY NOW
+                        <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex items-center justify-center gap-3 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    <ShieldCheck size={14} className="text-emerald-500" />
+                    SECURE SSL ENCRYPTED PAYMENT
+                  </div>
                 </div>
-              ))}
+              </section>
             </div>
-          </section>
-
-          {/* Payment Button */}
-          <div className="flex flex-col gap-4 mt-4">
-            {paymentUrl && (
-              <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col gap-3">
-                <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Pembayaran Siap</p>
-                <p className="text-xs text-blue-500 leading-relaxed">
-                  Jika Anda tidak diarahkan secara otomatis, silakan klik tombol di bawah untuk membuka halaman pembayaran.
-                </p>
-                <a 
-                  href={paymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors"
-                >
-                  Buka Halaman Pembayaran
-                </a>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-black text-white text-sm font-bold hover:bg-gray-800 transition-all shadow-xl shadow-black/10 disabled:bg-gray-400"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard size={20} />
-                  Pay Rp{subtotal.toLocaleString()}
-                </>
-              )}
-            </button>
           </div>
         </form>
       </main>
-
-      {/* Trust Info */}
-      <div className="px-6 py-4 flex items-center justify-center gap-2 text-[10px] text-gray-400 font-medium">
-        <CheckCircle2 size={12} className="text-emerald-500" />
-        Secure SSL Encrypted Payment
-      </div>
     </div>
   );
 };

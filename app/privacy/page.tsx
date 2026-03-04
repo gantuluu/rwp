@@ -55,7 +55,7 @@ export default function PrivacyPage() {
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-bold text-black">4. Pihak Ketiga</h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Kami hanya membagikan data Anda kepada mitra logistik dan penyedia layanan pembayaran (seperti Duitku) yang diperlukan untuk menyelesaikan transaksi Anda.
+              Kami hanya membagikan data Anda kepada mitra logistik dan penyedia layanan pembayaran (seperti Xendit) yang diperlukan untuk menyelesaikan transaksi Anda.
             </p>
           </div>
         </section>

@@ -4,25 +4,27 @@ import './globals.css';
 import BottomNav from '@/components/BottomNav';
 import Cart from '@/components/Cart';
 import Footer from '@/components/Footer';
+import Header from '@/components/Header';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'RWP Store | Modern E-commerce',
-  description: 'A sleek, mobile-first e-commerce experience by RWP Store.',
+  title: 'RWP Store | Premium Tech E-commerce',
+  description: 'Experience the next level of premium technology shopping with RWP Store.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-gray-50 text-gray-900 antialiased`} suppressHydrationWarning>
-        <div className="flex justify-center min-h-screen">
-          <main className="w-full max-w-[500px] bg-white min-h-screen relative pb-24 shadow-2xl shadow-black/5">
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-background text-foreground antialiased selection:bg-primary selection:text-white`} suppressHydrationWarning>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-1 pt-20 md:pt-32 pb-24 md:pb-12">
             {children}
-            <Footer />
-            <BottomNav />
-            <Cart />
           </main>
+          <Footer />
+          <BottomNav />
+          <Cart />
         </div>
       </body>
     </html>

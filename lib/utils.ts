@@ -6,6 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getBaseUrl() {
-  const url = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').trim();
-  return url.replace(/\/$/, ''); // Remove trailing slash if exists
+  // In AI Studio, we should prefer the current environment's URL
+  // If APP_URL is set, use it, otherwise try to fallback safely
+  const url = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || '').trim();
+  
+  if (url) return url.replace(/\/$/, '');
+  
+  // Fallback for development
+  return 'http://localhost:3000';
 }
